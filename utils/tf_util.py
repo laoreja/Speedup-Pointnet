@@ -233,12 +233,12 @@ def conv2d_return_conv(inputs,
       outputs = tf.nn.bias_add(outputs, biases, data_format='NCHW')
       
       outputs = tf.contrib.layers.batch_norm(
-                outputs, fused=True, scope='bn', data_format = 'NCHW')
+                outputs, decay=bn_decay, center=True, scale=True, is_training=is_training, fused=True, scope='bn', data_format='NCHW')
 
       if activation_fn is not None:
         outputs = activation_fn(outputs)
 
-      return outputs, conv_res, kernel, biases
+      return outputs, conv_res, kernel
 
 def conv2d(inputs,
            num_output_channels,
@@ -258,9 +258,7 @@ def conv2d(inputs,
            old_conv=None, 
            t=None,
           
-           kernel=None,
-           biases=None,
-           given_para=False):
+           kernel=None):
   """ 2D convolution with non-linear operation.
 
   Args:
@@ -283,18 +281,17 @@ def conv2d(inputs,
   """
   with tf.variable_scope(scope) as sc:
       if not do_add:
-        if not given_para:
-          kernel_h, kernel_w = kernel_size
-          num_in_channels = inputs.get_shape()[1].value
-          kernel_shape = [kernel_h, kernel_w,
-                          num_in_channels, num_output_channels]
-          kernel = _variable_with_weight_decay('weights',
-                                                shape=kernel_shape,
-                                                use_xavier=use_xavier,
-                                                stddev=stddev,
-                                                wd=weight_decay)
-          biases = _variable_on_cpu('biases', [num_output_channels],
-                                    tf.constant_initializer(0.0))
+        kernel_h, kernel_w = kernel_size
+        num_in_channels = inputs.get_shape()[1].value
+        kernel_shape = [kernel_h, kernel_w,
+                        num_in_channels, num_output_channels]
+        kernel = _variable_with_weight_decay('weights',
+                                              shape=kernel_shape,
+                                              use_xavier=use_xavier,
+                                              stddev=stddev,
+                                              wd=weight_decay)
+        biases = _variable_on_cpu('biases', [num_output_channels],
+                                  tf.constant_initializer(0.0))
         stride_h, stride_w = stride
         outputs = tf.nn.conv2d(inputs, kernel,
                                 [1, stride_h, stride_w, 1],
@@ -308,7 +305,7 @@ def conv2d(inputs,
       
       if bn:
         outputs = tf.contrib.layers.batch_norm(
-                outputs, fused=True, scope='bn', data_format='NCHW')
+                outputs, decay=bn_decay, center=True, scale=True, is_training=is_training, fused=True, scope='bn', data_format='NCHW')
                 
       if activation_fn is not None:
         outputs = activation_fn(outputs)
@@ -487,7 +484,9 @@ def fully_connected(inputs,
     outputs = tf.nn.bias_add(outputs, biases)
      
     if bn:
-      outputs = batch_norm_for_fc(outputs, is_training, bn_decay, 'bn')
+      outputs = tf.contrib.layers.batch_norm(
+                outputs, decay=bn_decay, center=True, scale=True, is_training=is_training, fused=True, scope='bn')
+#      outputs = batch_norm_for_fc(outputs, is_training, bn_decay, 'bn')
 
     if activation_fn is not None:
       outputs = activation_fn(outputs)

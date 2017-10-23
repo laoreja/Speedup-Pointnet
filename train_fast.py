@@ -147,7 +147,10 @@ def train():
         optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=MOMENTUM)
       elif OPTIMIZER == 'adam':
         optimizer = tf.train.AdamOptimizer(learning_rate)
-      train_op = optimizer.minimize(loss, global_step=batch)
+        
+      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+      with tf.control_dependencies(update_ops):
+        train_op = optimizer.minimize(loss, global_step=batch)
       
       # Add ops to save and restore all the variables.
       saver = tf.train.Saver()

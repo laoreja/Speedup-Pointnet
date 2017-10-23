@@ -137,7 +137,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
             if use_xyz:
                 all_points = tf.concat([xyz, points], 1)
         all_points = all_points[:, :, :, None]
-        all_points, old_conv, kernel, biases = tf_util.conv2d_return_conv(all_points, 
+        all_points, old_conv, kernel = tf_util.conv2d_return_conv(all_points, 
                                     mlp[0], 
                                     [1,1],
                                     padding='VALID', stride=[1,1],
@@ -164,21 +164,18 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
         for i, num_out_channel in enumerate(mlp):
             if i == 0:
                 do_add = True
-                given_para = True
                 t = -1*xyz
             else:
                 do_add = False
                 old_conv = None
                 t = None
-                given_para = False
                 kernel = None
-                biases = None
             points = tf_util.conv2d(points, num_out_channel, [1,1],
                                         padding='VALID', stride=[1,1],
                                         bn=bn, is_training=is_training,
                                         scope='conv%d'%(i), bn_decay=bn_decay,
                                         do_add=do_add, old_conv=old_conv, t=t, 
-                                        kernel=kernel, biases=biases, given_para=given_para) 
+                                        kernel=kernel) 
             # (batch_size, npoint, nsample, last_mlp)
 
         points = tf.reduce_max(points, axis=[3], keep_dims=False)
