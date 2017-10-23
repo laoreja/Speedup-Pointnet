@@ -67,8 +67,6 @@ class PointCloudDataGenerator(object):
 
     def _parse_function_inference(self, serialized_example):
         """Input parser for samples of the validation/test set."""
-#        print type(serialized_example)  <class 'tensorflow.python.framework.ops.Tensor'>
-#        print serialized_example  Tensor("arg0:0", shape=(), dtype=string)
         feature_map = {
             'data': tf.FixedLenFeature([1024*3], dtype=tf.float32),
             'label': tf.FixedLenFeature([1], dtype=tf.int64, default_value=-1),
@@ -76,10 +74,6 @@ class PointCloudDataGenerator(object):
         features = tf.parse_single_example(serialized_example, feature_map)
         label = tf.cast(features['label'], dtype=tf.int32)
         points = tf.reshape(features['data'], (-1, 3))
-#        example = tf.train.Example()
-#        example.ParseFromString(serialized_example)
-#        points = np.array(example.features.feature['data'].float_list.value)        
-#        label = np.array(example.features.feature['label'].int64_list.value)
         return points, label
         
     def _rotate_point_cloud(self, single_data):
