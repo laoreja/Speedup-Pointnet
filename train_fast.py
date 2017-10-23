@@ -10,7 +10,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'models'))
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
-#import provider
 from tensorflow.contrib.data import Iterator
 from datagenerator import PointCloudDataGenerator
 import tf_util
@@ -80,14 +79,6 @@ BN_DECAY_DECAY_RATE = 0.5
 BN_DECAY_DECAY_STEP = float(DECAY_STEP)
 BN_DECAY_CLIP = 0.99
 
-## ModelNet40 official train/test split
-#TRAIN_FILES = provider.getDataFiles( \
-#    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt'))
-##print 'LEN TRAIN_FILES', len(TRAIN_FILES) 5
-#TEST_FILES = provider.getDataFiles(\
-#    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt'))
-##print 'LEN TEST_FILES', len(TEST_FILES) 2
-
 def log_string(out_str):
   LOG_FOUT.write(out_str+'\n')
   LOG_FOUT.flush()
@@ -149,19 +140,8 @@ def train():
       accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / float(BATCH_SIZE)
       tf.summary.scalar('accuracy', accuracy)
       
-#      # Eval epoch stats
-#      eval_epoch_loss_value_ = tf.placeholder(tf.float32, shape=())
-#      eval_epoch_loss_summary = tf.summary.scalar('eval epoch loss', eval_epoch_loss_value_)
-#
-#      eval_epoch_accuracy_value_ = tf.placeholder(tf.float32, shape=())
-#      eval_epoch_accuracy_summary = tf.summary.scalar('eval epoch accuracy', eval_epoch_accuracy_value_)
-#      
-#      eval_epoch_avg_class_acc_value_ = tf.placeholder(tf.float32, shape=())
-#      eval_epoch_avg_class_acc_summary = tf.summary.scalar('eval epoch avg class acc', eval_epoch_avg_class_acc_value_)
-
       # Get training operator
       learning_rate = get_learning_rate(batch)
-#      learning_rate = BASE_LEARNING_RATE
       tf.summary.scalar('learning_rate', learning_rate)
       if OPTIMIZER == 'momentum':
         optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=MOMENTUM)
@@ -180,7 +160,6 @@ def train():
       sess = tf.Session(config=config)
 
       # Add summary writers
-      #merged = tf.merge_all_summaries()
       merged = tf.summary.merge_all()
       train_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'train'),
                                 sess.graph)
@@ -202,28 +181,11 @@ def train():
               'merged': merged,
               'step': batch}
 
-#      test_ops = {'pointclouds_pl': pointclouds_pl,
-#              'labels_pl': labels_pl,
-#              'is_training_pl': is_training_pl,
-#              'pred': pred,
-#              'loss': loss,
-#              'train_op': train_op,
-#              'merged': merged,
-#              'step': batch,
-#              'eval_loss_pl':eval_epoch_loss_value_,
-#              'eval_loss_s':eval_epoch_loss_summary,
-#              'eval_acc_pl':eval_epoch_accuracy_value_,
-#              'eval_acc_s':eval_epoch_accuracy_summary,
-#              'eval_avg_class_acc_pl':eval_epoch_avg_class_acc_value_,
-#              'eval_avg_class_acc_s':eval_epoch_avg_class_acc_summary}
-
-
       start_epoch = 0
       if RESUME:
         saver.restore(sess, os.path.join(LOG_DIR, "model.ckpt-"+RESUME_EPOCH))
         log_string('Resume from %s' % os.path.join(LOG_DIR, "model.ckpt-"+RESUME_EPOCH))
         start_epoch = int(RESUME_EPOCH) + 1
-      
       
       for epoch in range(start_epoch, MAX_EPOCH):
         log_string('**** EPOCH %03d ****' % (epoch))
@@ -250,7 +212,6 @@ def train():
         
         # Save the variables to disk.
         if epoch % 10 == 0:
-#        if True:
           save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"), global_step=epoch)
           log_string("Model saved in file: %s" % save_path)
         log_string("")
@@ -259,26 +220,12 @@ def train():
       test_writer.close()
       global best_accuracy, best_epoch
       log_string("Best accuracy %f at epoch %d" % (best_accuracy, best_epoch))
-  
-
-        
+      
 
 def train_one_epoch(sess, ops, train_writer, next_batch):
   """ ops: dict mapping from string to tf ops """
   is_training = True
   
-  # Shuffle train files
-#  train_file_idxs = np.arange(0, len(TRAIN_FILES))
-#  np.random.shuffle(train_file_idxs)
-    
-#  for fn in range(len(TRAIN_FILES)):
-#    log_string('----' + str(fn) + '-----')
-#    current_data, current_label = sess.run(next_batch)#provider.loadDataFile(TRAIN_FILES[train_file_idxs[fn]])
-#    current_data = current_data[:,0:NUM_POINT,:]
-#    current_data, current_label, _ = provider.shuffle_data(current_data, np.squeeze(current_label))            
-#    current_label = tf.squeeze(current_label)
-    
-#    file_size = current_data.shape[0]
   num_batches = NUM_TRAIN_EXAMPLES // BATCH_SIZE
   
   total_correct = 0
@@ -288,14 +235,8 @@ def train_one_epoch(sess, ops, train_writer, next_batch):
   for batch_idx in range(num_batches):
     points_batch, label_batch = sess.run(next_batch)
     label_batch = np.squeeze(label_batch)
-#      start_idx = batch_idx * BATCH_SIZE
-#      end_idx = (batch_idx+1) * BATCH_SIZE
-    
-    # Augment batched point clouds by rotation and jittering
-#      rotated_data = provider.rotate_point_cloud(current_data[start_idx:end_idx, :, :])
-#      jittered_data = provider.jitter_point_cloud(rotated_data)
-    feed_dict = {ops['pointclouds_pl']: points_batch,#jittered_data,
-                  ops['labels_pl']: label_batch,#current_label[start_idx:end_idx],
+    feed_dict = {ops['pointclouds_pl']: points_batch,
+                  ops['labels_pl']: label_batch,
                   ops['is_training_pl']: is_training,}
     summary, step, _, loss_val, pred_val = sess.run([ops['merged'], ops['step'],
         ops['train_op'], ops['loss'], ops['pred']], feed_dict=feed_dict)
@@ -309,6 +250,7 @@ def train_one_epoch(sess, ops, train_writer, next_batch):
   log_string('mean loss: %f' % (loss_sum / float(num_batches)))
   log_string('accuracy: %f' % (total_correct / float(total_seen)))
         
+        
 def eval_one_epoch(sess, ops, test_writer, epoch, next_batch):
   """ ops: dict mapping from string to tf ops """
   is_training = False
@@ -318,23 +260,14 @@ def eval_one_epoch(sess, ops, test_writer, epoch, next_batch):
   total_seen_class = [0 for _ in range(NUM_CLASSES)]
   total_correct_class = [0 for _ in range(NUM_CLASSES)]
   
-#  for fn in range(len(TEST_FILES)):
-#    log_string('----' + str(fn) + '-----')
-#    current_data, current_label = provider.loadDataFile(TEST_FILES[fn])
-#    current_data = current_data[:,0:NUM_POINT,:]
-#    current_label = np.squeeze(current_label)
-    
-#    file_size = current_data.shape[0]
   num_batches = NUM_EVAL_EXAMPLES // BATCH_SIZE
   
   for batch_idx in range(num_batches):
     points_batch, label_batch = sess.run(next_batch)
     label_batch = np.squeeze(label_batch)
-#      start_idx = batch_idx * BATCH_SIZE
-#      end_idx = (batch_idx+1) * BATCH_SIZE
 
-    feed_dict = {ops['pointclouds_pl']: points_batch,#current_data[start_idx:end_idx, :, :],
-                  ops['labels_pl']: label_batch,#current_label[start_idx:end_idx],
+    feed_dict = {ops['pointclouds_pl']: points_batch,
+                  ops['labels_pl']: label_batch,
                   ops['is_training_pl']: is_training}
     summary, step, loss_val, pred_val = sess.run([ops['merged'], ops['step'],
         ops['loss'], ops['pred']], feed_dict=feed_dict)
@@ -356,14 +289,6 @@ def eval_one_epoch(sess, ops, test_writer, epoch, next_batch):
   log_string('eval mean loss: %f' % eval_mean_loss)
   log_string('eval accuracy: %f'% eval_accuracy)
   log_string('eval avg class acc: %f' % eval_avg_class_acc)
-    
-#  a,b,c = sess.run([ops['eval_loss_s'], ops['eval_acc_s'], ops['eval_avg_class_acc_s']], 
-#            feed_dict={ops['eval_loss_pl']:eval_mean_loss,
-#                        ops['eval_acc_pl']:eval_accuracy,
-#                        ops['eval_avg_class_acc_pl']:eval_avg_class_acc})
-#  test_writer.add_summary(a, step)
-#  test_writer.add_summary(b, step)
-#  test_writer.add_summary(c, step)
   
   global best_accuracy, best_epoch
   if eval_accuracy > best_accuracy:

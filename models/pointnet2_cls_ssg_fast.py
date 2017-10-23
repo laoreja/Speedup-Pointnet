@@ -59,7 +59,6 @@ def get_loss(pred, label, end_points):
         label: B, """
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred, labels=label)
     classify_loss = tf.reduce_mean(loss)
-#    tf.summary.scalar('classify loss', classify_loss)
     return classify_loss
 
 
